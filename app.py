@@ -2,6 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, abort, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import get_db, init_db, seed_db, create_user, get_user_by_email
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = "spendly-dev-secret"  # TODO: load from env var in production
@@ -98,37 +99,12 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    user = {
-        "name": "Demo User",
-        "email": "demo@spendly.com",
-        "member_since": "May 2026",
-        "initials": "DU",
-    }
-    stats = {
-        "total_spent": "$388.25",
-        "transaction_count": 8,
-        "top_category": "Bills",
-        "top_category_amount": "$120.00",
-    }
-    transactions = [
-        {"date": "May 25, 2026", "description": "Restaurant dinner",  "category": "Food",          "amount": "$60.00"},
-        {"date": "May 21, 2026", "description": "Miscellaneous",       "category": "Other",         "amount": "$15.75"},
-        {"date": "May 18, 2026", "description": "New shoes",           "category": "Shopping",      "amount": "$80.00"},
-        {"date": "May 14, 2026", "description": "Movie tickets",       "category": "Entertainment", "amount": "$25.00"},
-        {"date": "May 10, 2026", "description": "Pharmacy",            "category": "Health",        "amount": "$30.00"},
-        {"date": "May 08, 2026", "description": "Electricity bill",    "category": "Bills",         "amount": "$120.00"},
-        {"date": "May 05, 2026", "description": "Bus pass top-up",     "category": "Transport",     "amount": "$12.00"},
-        {"date": "May 02, 2026", "description": "Grocery run",         "category": "Food",          "amount": "$45.50"},
-    ]
-    categories = [
-        {"name": "Bills",         "amount": "$120.00", "pct": 31},
-        {"name": "Food",          "amount": "$105.50", "pct": 27},
-        {"name": "Shopping",      "amount": "$80.00",  "pct": 21},
-        {"name": "Health",        "amount": "$30.00",  "pct": 8},
-        {"name": "Entertainment", "amount": "$25.00",  "pct": 6},
-        {"name": "Other",         "amount": "$15.75",  "pct": 4},
-        {"name": "Transport",     "amount": "$12.00",  "pct": 3},
-    ]
+    user = get_user_by_id(session["user_id"])
+    if user is None:
+        abort(404)
+    stats = get_summary_stats(session["user_id"])
+    transactions = get_recent_transactions(session["user_id"])
+    categories = get_category_breakdown(session["user_id"])
     return render_template("profile.html", user=user, stats=stats,
                            transactions=transactions, categories=categories)
 
