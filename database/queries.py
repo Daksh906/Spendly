@@ -2,6 +2,40 @@ from database.db import get_db
 from datetime import datetime
 
 
+def _is_valid_date(value):
+    if not value:
+        return False
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def _validate_range(start_date, end_date):
+    """Returns (start_valid, end_valid), or None if the range should match nothing."""
+    start_valid = _is_valid_date(start_date)
+    end_valid = _is_valid_date(end_date)
+
+    if (start_date and not start_valid) or (end_date and not end_valid):
+        return None
+    if start_valid and end_valid and start_date > end_date:
+        return None
+    return start_valid, end_valid
+
+
+def _date_range_clause(user_id, start_valid, end_valid, start_date, end_date):
+    clause = " WHERE user_id = ?"
+    params = [user_id]
+    if start_valid:
+        clause += " AND date >= ?"
+        params.append(start_date)
+    if end_valid:
+        clause += " AND date <= ?"
+        params.append(end_date)
+    return clause, params
+
+
 def get_user_by_id(user_id):
     conn = get_db()
     try:
@@ -24,24 +58,29 @@ def get_user_by_id(user_id):
         conn.close()
 
 
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, start_date=None, end_date=None):
+    empty_stats = {"total_spent": "₹0.00", "transaction_count": 0,
+                    "top_category": "—", "top_category_amount": "₹0.00"}
+    validity = _validate_range(start_date, end_date)
+    if validity is None:
+        return empty_stats
+    start_valid, end_valid = validity
+
     conn = get_db()
     try:
+        where_clause, params = _date_range_clause(user_id, start_valid, end_valid, start_date, end_date)
+
         totals = conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt FROM expenses WHERE user_id = ?",
-            (user_id,),
+            "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt FROM expenses" + where_clause,
+            params,
         ).fetchone()
         top = conn.execute(
-            """
-            SELECT category, SUM(amount) AS cat_total
-            FROM expenses WHERE user_id = ?
-            GROUP BY category ORDER BY cat_total DESC LIMIT 1
-            """,
-            (user_id,),
+            "SELECT category, SUM(amount) AS cat_total FROM expenses" + where_clause +
+            " GROUP BY category ORDER BY cat_total DESC LIMIT 1",
+            params,
         ).fetchone()
         if top is None:
-            return {"total_spent": "₹0.00", "transaction_count": 0,
-                    "top_category": "—", "top_category_amount": "₹0.00"}
+            return empty_stats
         return {
             "total_spent": "₹{:.2f}".format(totals["total"]),
             "transaction_count": totals["cnt"],
@@ -52,19 +91,25 @@ def get_summary_stats(user_id):
         conn.close()
 
 
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
+    validity = _validate_range(start_date, end_date)
+    if validity is None:
+        return []
+    start_valid, end_valid = validity
+
     conn = get_db()
     try:
-        rows = conn.execute(
-            """
-            SELECT date, description, category, amount
-            FROM expenses
-            WHERE user_id = ?
-            ORDER BY date DESC, id DESC
-            LIMIT ?
-            """,
-            (user_id, limit),
-        ).fetchall()
+        where_clause, params = _date_range_clause(user_id, start_valid, end_valid, start_date, end_date)
+
+        sql = "SELECT date, description, category, amount FROM expenses" + where_clause
+        sql += " ORDER BY date DESC, id DESC"
+
+        date_filter_active = start_valid or end_valid
+        if not date_filter_active:
+            sql += " LIMIT ?"
+            params.append(limit)
+
+        rows = conn.execute(sql, params).fetchall()
         result = []
         for row in rows:
             dt = datetime.strptime(row["date"], "%Y-%m-%d")
@@ -79,16 +124,20 @@ def get_recent_transactions(user_id, limit=10):
         conn.close()
 
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start_date=None, end_date=None):
+    validity = _validate_range(start_date, end_date)
+    if validity is None:
+        return []
+    start_valid, end_valid = validity
+
     conn = get_db()
     try:
+        where_clause, params = _date_range_clause(user_id, start_valid, end_valid, start_date, end_date)
+
         rows = conn.execute(
-            """
-            SELECT category, SUM(amount) AS cat_total
-            FROM expenses WHERE user_id = ?
-            GROUP BY category ORDER BY cat_total DESC
-            """,
-            (user_id,),
+            "SELECT category, SUM(amount) AS cat_total FROM expenses" + where_clause +
+            " GROUP BY category ORDER BY cat_total DESC",
+            params,
         ).fetchall()
         if not rows:
             return []

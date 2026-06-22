@@ -52,6 +52,23 @@
                 <i data-lucide="clock" class="section-icon"></i>
                 Recent Transactions
             </h2>
+            <form method="get" action="{{ url_for('profile') }}" class="filter-form">
+                <div class="form-group filter-field">
+                    <label for="start_date">From</label>
+                    <input type="date" id="start_date" name="start_date"
+                           class="form-input" value="{{ start_date }}">
+                </div>
+                <div class="form-group filter-field">
+                    <label for="end_date">To</label>
+                    <input type="date" id="end_date" name="end_date"
+                           class="form-input" value="{{ end_date }}">
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-primary">Apply</button>
+                    <a href="{{ url_for('profile') }}" class="btn-ghost">Clear filter</a>
+                </div>
+            </form>
+            {% if transactions %}
             <div class="table-wrap">
                 <table class="txn-table">
                     <thead>
@@ -74,6 +91,9 @@
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <p class="txn-empty">No transactions found in this date range.</p>
+            {% endif %}
         </section>
 
         <section class="profile-section">
@@ -81,6 +101,7 @@
                 <i data-lucide="bar-chart-2" class="section-icon"></i>
                 By Category
             </h2>
+            {% if categories %}
             <div class="breakdown-list">
                 {% for cat in categories %}
                 <div class="breakdown-row">
@@ -94,6 +115,9 @@
                 </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <p class="txn-empty">No category data for this date range.</p>
+            {% endif %}
         </section>
 
     </div>

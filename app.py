@@ -102,11 +102,20 @@ def profile():
     user = get_user_by_id(session["user_id"])
     if user is None:
         abort(404)
-    stats = get_summary_stats(session["user_id"])
-    transactions = get_recent_transactions(session["user_id"])
-    categories = get_category_breakdown(session["user_id"])
-    return render_template("profile.html", user=user, stats=stats,
-                           transactions=transactions, categories=categories)
+
+    start_date = request.args.get("start_date", "").strip() or None
+    end_date = request.args.get("end_date", "").strip() or None
+
+    stats = get_summary_stats(session["user_id"], start_date=start_date, end_date=end_date)
+    transactions = get_recent_transactions(
+        session["user_id"], start_date=start_date, end_date=end_date
+    )
+    categories = get_category_breakdown(session["user_id"], start_date=start_date, end_date=end_date)
+    return render_template(
+        "profile.html", user=user, stats=stats,
+        transactions=transactions, categories=categories,
+        start_date=start_date or "", end_date=end_date or "",
+    )
 
 
 @app.route("/expenses/add")
