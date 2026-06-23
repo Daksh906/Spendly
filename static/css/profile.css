@@ -294,6 +294,10 @@
     white-space: nowrap;
 }
 
+.txn-actions a + a {
+    margin-left: 0.75rem;
+}
+
 .txn-edit-link {
     display: inline-flex;
     align-items: center;
@@ -310,6 +314,26 @@
 }
 
 .txn-edit-link i {
+    width: 14px;
+    height: 14px;
+}
+
+.txn-delete-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+
+.txn-delete-link:hover {
+    color: var(--danger);
+}
+
+.txn-delete-link i {
     width: 14px;
     height: 14px;
 }
