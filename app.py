@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, abort, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-from database.db import get_db, init_db, seed_db, create_user, get_user_by_email, insert_expense
+from database.db import get_db, init_db, seed_db, create_user, get_user_by_email, insert_expense, get_expense_by_id, update_expense
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown, is_valid_date
 
 app = Flask(__name__)
@@ -176,9 +176,65 @@ def add_expense():
     return redirect(url_for("profile"))
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    expense = get_expense_by_id(id)
+    if expense is None:
+        abort(404)
+    if expense["user_id"] != session["user_id"]:
+        abort(403)
+
+    if request.method == "GET":
+        return render_template(
+            "edit_expense.html",
+            expense_id=id,
+            categories=EXPENSE_CATEGORIES,
+            amount=expense["amount"], category=expense["category"],
+            date=expense["date"], description=expense["description"] or "",
+        )
+
+    amount_raw = request.form.get("amount", "").strip()
+    category = request.form.get("category", "").strip()
+    date = request.form.get("date", "").strip()
+    description = request.form.get("description", "").strip()
+
+    form_values = {
+        "expense_id": id,
+        "categories": EXPENSE_CATEGORIES,
+        "amount": amount_raw,
+        "category": category,
+        "date": date,
+        "description": description,
+    }
+
+    try:
+        amount = float(amount_raw)
+    except ValueError:
+        return render_template(
+            "edit_expense.html", error="Please enter a valid amount.", **form_values
+        ), 400
+    if not math.isfinite(amount) or amount <= 0 or amount > MAX_EXPENSE_AMOUNT:
+        return render_template(
+            "edit_expense.html", error="Amount must be a positive number up to ₹1,000,000.", **form_values
+        ), 400
+
+    if category not in EXPENSE_CATEGORIES:
+        return render_template(
+            "edit_expense.html", error="Please choose a valid category.", **form_values
+        ), 400
+
+    if not is_valid_date(date):
+        return render_template(
+            "edit_expense.html", error="Please enter a valid date.", **form_values
+        ), 400
+
+    update_expense(id, amount, category, date, description or None)
+
+    flash("Expense updated.")
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/delete")

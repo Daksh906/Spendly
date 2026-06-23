@@ -285,6 +285,35 @@
     font-variant-numeric: tabular-nums;
 }
 
+.txn-table thead th.col-actions {
+    width: 1%;
+}
+
+.txn-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.txn-edit-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color 0.12s;
+}
+
+.txn-edit-link:hover {
+    color: var(--accent);
+}
+
+.txn-edit-link i {
+    width: 14px;
+    height: 14px;
+}
+
 /* ------------------------------------------------------------------ */
 /* Category badges                                                      */
 /* ------------------------------------------------------------------ */

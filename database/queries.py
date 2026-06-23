@@ -101,7 +101,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     try:
         where_clause, params = _date_range_clause(user_id, start_valid, end_valid, start_date, end_date)
 
-        sql = "SELECT date, description, category, amount FROM expenses" + where_clause
+        sql = "SELECT id, date, description, category, amount FROM expenses" + where_clause
         sql += " ORDER BY date DESC, id DESC"
 
         date_filter_active = start_valid or end_valid
@@ -114,6 +114,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
         for row in rows:
             dt = datetime.strptime(row["date"], "%Y-%m-%d")
             result.append({
+                "id": row["id"],
                 "date": dt.strftime("%B %d, %Y"),
                 "description": row["description"] or "",
                 "category": row["category"],
